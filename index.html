@@ -50,15 +50,16 @@
         .damage-flash { position: absolute; inset:0; background: radial-gradient(transparent, rgba(255,0,0,0.4)); z-index: 500; opacity: 0; transition: 0.1s; pointer-events: none; mix-blend-mode: multiply; }
         .muzzle-flash { position: absolute; inset:0; background: radial-gradient(circle at center, rgba(255,200,100,0.3) 0%, transparent 70%); z-index: 400; opacity: 0; pointer-events: none; mix-blend-mode: screen; }
         
-        @media screen and (orientation: portrait) and (max-width: 800px) {
-            #game-container { display: none !important; }
-            #loader { display: none !important; }
-            body::before {
-                content: "PLEASE ROTATE YOUR PHONE TO LANDSCAPE TO PLAY";
-                color: #ef4444; display: flex; justify-content: center; align-items: center;
-                height: 100vh; font-size: 32px; font-weight: 900; text-align: center;
-                padding: 40px; line-height: 1.5; text-shadow: 0 0 20px rgba(239,68,68,0.5); letter-spacing: 2px;
-            }
+        @media screen and (max-width: 600px) {
+            .hero-title { font-size: 48px; }
+            .score-txt { font-size: 24px; }
+            .wave-txt { font-size: 24px; font-weight: 800; }
+            .ammo-display { font-size: 28px; top: 100px; font-weight: 900; }
+            .hud-box { padding: 10px 15px; }
+            #btnShoot { width: 80px; height: 80px; bottom: 30px; right: 30px; font-size:24px; }
+            #btnReload { bottom: 130px; right: 40px; width: 55px; height: 55px; }
+            #btnJump { bottom: 40px; right: 130px; width: 55px; height: 55px; }
+            .health-bar { width: 150px; }
         }
     </style>
 </head>
@@ -257,6 +258,14 @@
                 document.getElementById('joystick-zone').style.display = 'block'; document.getElementById('look-zone').style.display = 'block';
                 const btns = document.querySelectorAll('.mobile-btn'); btns.forEach(b => b.style.display = 'block');
             }
+
+            window.addEventListener('resize', () => {
+                if(camera && renderer) {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                }
+            });
 
             animate();
         }
@@ -488,7 +497,7 @@
         }
 
         function activateUI() {
-            if (isMobile && document.body.requestFullscreen) { document.body.requestFullscreen().then(() => { try { screen.orientation.lock("landscape").catch(console.warn); } catch(e){} }).catch(console.warn); }
+            if (isMobile && document.body.requestFullscreen) { document.body.requestFullscreen().catch(console.warn); }
             document.getElementById('ui-health-cont').style.display = 'flex'; document.getElementById('ui-score-cont').style.display = 'block';
             document.getElementById('ui-wave-cont').style.display = 'block'; document.getElementById('ammoDisplay').style.display = 'block';
             document.getElementById('crosshair').style.display = 'block';
