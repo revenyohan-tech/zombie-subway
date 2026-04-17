@@ -203,10 +203,13 @@
         let touchDx = 0, touchDy = 0;
         
         // AUDIO SYNTHESIS CACHE
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const sfxCtx = new AudioContext();
-        function playSfx(type) {
+        let sfxCtx = null;
+        function initAudio() {
+            if(!sfxCtx) sfxCtx = new (window.AudioContext || window.webkitAudioContext)();
             if(sfxCtx.state === 'suspended') sfxCtx.resume();
+        }
+        function playSfx(type) {
+            if(!sfxCtx) return;
             const osc = sfxCtx.createOscillator(); const gain = sfxCtx.createGain();
             osc.connect(gain); gain.connect(sfxCtx.destination);
             if(type === 'shoot') {
@@ -220,17 +223,25 @@
             }
         }
 
+        // FAKE GROUND GLOW TEXTURE
+        const glowC = document.createElement('canvas'); glowC.width = 128; glowC.height = 128; const gCtx = glowC.getContext('2d');
+        const grad = gCtx.createRadialGradient(64,64,0, 64,64,64);
+        grad.addColorStop(0, 'rgba(80, 255, 80, 0.9)'); grad.addColorStop(1, 'rgba(80, 255, 80, 0)');
+        gCtx.fillStyle = grad; gCtx.fillRect(0,0,128,128);
+        const glowTex = new THREE.CanvasTexture(glowC);
+
         // ZOMBIE ASSET CACHE (Optimization: Ends massive freezing on spawn!)
         const Z_ASSETS = {
             bodyGeo: new THREE.BoxGeometry(0.7, 0.9, 0.4), bodyMat: new THREE.MeshStandardMaterial({ color: 0x66aa55, emissive: 0x224411, emissiveIntensity: 0.8, roughness: 0.7 }),
             headGeo: new THREE.BoxGeometry(0.4, 0.45, 0.4), headMat: new THREE.MeshStandardMaterial({ color: 0x99cc88, emissive: 0x223311, emissiveIntensity: 0.5, roughness: 0.6 }),
             eyeGeo: new THREE.SphereGeometry(0.06, 8, 8), 
-            eyeMat: new THREE.MeshStandardMaterial({ color: 0xffff88, emissive: 0xaaaa00, emissiveIntensity: 1 }),
-            eyeMatAngry: new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 8 }),
+            eyeMat: new THREE.MeshStandardMaterial({ color: 0xffffaa, emissive: 0xaaaa00, emissiveIntensity: 1 }),
+            eyeMatAngry: new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 2.5 }), // Lowered from 8 to avoid washing out into pure Neon White
             armGeo: new THREE.BoxGeometry(0.2, 0.65, 0.2), armMat: new THREE.MeshStandardMaterial({ color: 0x66aa55, emissive: 0x224411, emissiveIntensity: 0.6, roughness: 0.7 }),
             legGeo: new THREE.BoxGeometry(0.22, 0.7, 0.22), legMat: new THREE.MeshStandardMaterial({ color: 0x558844, emissive: 0x112200, emissiveIntensity: 0.4, roughness: 0.8 }),
             bgGeo: new THREE.PlaneGeometry(0.8, 0.1), bgMat: new THREE.MeshBasicMaterial({color:0x555, depthTest:false}),
-            fillGeo: new THREE.PlaneGeometry(0.76, 0.08), fillMat: new THREE.MeshBasicMaterial({color:0xff0000, depthTest:false})
+            fillGeo: new THREE.PlaneGeometry(0.76, 0.08), fillMat: new THREE.MeshBasicMaterial({color:0xff0000, depthTest:false}),
+            glowGeo: new THREE.PlaneGeometry(3, 3), glowMat: new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.6 })
         };
         
         const UI = {
@@ -389,6 +400,8 @@
             const hbBg = new THREE.Mesh(Z_ASSETS.bgGeo, Z_ASSETS.bgMat); hbBg.position.y = 2.4; hbBg.renderOrder=1; group.add(hbBg);
             const hb = new THREE.Mesh(Z_ASSETS.fillGeo, Z_ASSETS.fillMat); hb.position.set(0, 2.4, 0.001); hb.renderOrder=2; group.add(hb);
 
+            const floorGlow = new THREE.Mesh(Z_ASSETS.glowGeo, Z_ASSETS.glowMat); floorGlow.rotation.x = -Math.PI / 2; floorGlow.position.y = 0.05; group.add(floorGlow);
+
             group.traverse(child => { if(child.isMesh) child.frustumCulled = false; }); group.frustumCulled = false;
             group.position.set(x, 0, z); scene.add(group);
 
@@ -407,7 +420,8 @@
             for(let i=0; i<(3 + w * 2); i++) {
                 const side = Math.random()>0.5?1:-1; const x = side * (2 + Math.random()*4);
                 let z = (w === 1) ? (camera.position.z + (Math.random()-0.3)*30) : ((Math.random()>0.5?1:-1) * (10 + Math.random()*25));
-                zombies.push(createZombie(x, Math.max(-38, Math.min(38, z))));
+                // MASSIVE FIX: Clamped spawning within rendering area so zombies don't spawn trapped behind boundary walls or fog lines!
+                zombies.push(createZombie(x, Math.max(-30, Math.min(30, z))));
             }
         }
 
@@ -538,9 +552,10 @@
             document.getElementById('saveScoreDiv').innerHTML = "<span style='color:#4ade80; font-size:24px; font-weight:bold;'>YOUR SCORE WAS SAVED!</span>";
         };
 
-        window.startSolo = () => { isSolo = true; document.getElementById('startScreen').style.display = 'none'; activateUI(); if(!isMobile) controls.lock(); spawnWave(1); };
+        window.startSolo = () => { initAudio(); isSolo = true; document.getElementById('startScreen').style.display = 'none'; activateUI(); if(!isMobile) controls.lock(); spawnWave(1); };
         window.resumeGame = () => { gamePaused = false; document.getElementById('pauseScreen').style.display = 'none'; if(!isMobile) controls.lock(); };
         window.startHost = () => {
+            initAudio();
             document.getElementById('loader').style.display='block'; peer = new Peer();
             peer.on('open', id => { document.getElementById('lobbyInfo').innerText = "YOUR LOBBY CODE: " + id; document.getElementById('loader').style.display='none'; isSolo = false; isHost = true; });
             peer.on('connection', c => {
@@ -549,6 +564,7 @@
             });
         };
         window.joinCoop = () => {
+            initAudio();
             const id = prompt("Enter the green Host Lobby Code:"); if(!id) return;
             document.getElementById('loader').style.display='block'; peer = new Peer();
             peer.on('open', () => {
