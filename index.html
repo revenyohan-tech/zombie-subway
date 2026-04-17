@@ -389,12 +389,6 @@
             const useAngryEyes = wave >= 5;
             const leftEye = new THREE.Mesh(Z_ASSETS.eyeGeo, useAngryEyes ? Z_ASSETS.eyeMatAngry : Z_ASSETS.eyeMat); leftEye.position.set(-0.1, 1.9, -0.21); group.add(leftEye);
             const rightEye = new THREE.Mesh(Z_ASSETS.eyeGeo, useAngryEyes ? Z_ASSETS.eyeMatAngry : Z_ASSETS.eyeMat); rightEye.position.set(0.1, 1.9, -0.21); group.add(rightEye);
-            
-            // Emulating 'Time-Freezing Effect' by forcing PointLights back into the scene.
-            const zombieLight = new THREE.PointLight(useAngryEyes ? 0xff2200 : 0x88ff44, 2.0, 10);
-            zombieLight.position.set(0, 1.5, 0); group.add(zombieLight);
-            const spawnLight = new THREE.PointLight(0x00ff00, 5, 15); spawnLight.position.set(0, 1.5, 0); group.add(spawnLight);
-            setTimeout(() => { if(spawnLight) spawnLight.intensity = 0; }, 500);
 
             const leftArm = new THREE.Mesh(Z_ASSETS.armGeo, Z_ASSETS.armMat); leftArm.position.set(-0.48, 1.25, -0.1); leftArm.rotation.x = -0.8; leftArm.castShadow = true; group.add(leftArm);
             const rightArm = new THREE.Mesh(Z_ASSETS.armGeo, Z_ASSETS.armMat); rightArm.position.set(0.48, 1.25, -0.1); rightArm.rotation.x = -0.8; rightArm.castShadow = true; group.add(rightArm);
